@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background: oklch(0.985 0.004 80); }
+    ::selection { background: oklch(0.85 0.07 75 / 0.4); }
+    input, select { font-family: 'IBM Plex Sans', sans-serif; }
+  </style>
+</helmet>
+
+<div style="min-height:100vh; background:oklch(0.985 0.004 80); font-family:'IBM Plex Sans',sans-serif; color:oklch(0.22 0.01 60); padding:40px 48px 80px;">
+
+  <!-- Header -->
+  <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:28px; flex-wrap:wrap;">
+    <div>
+      <div style="font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.55 0.05 70); margin-bottom:6px; font-weight:600;">PURE × Stockley</div>
+      <h1 style="margin:0; font-size:34px; font-weight:700; letter-spacing:-0.01em;">Cabin Shop Inventory</h1>
+      <div style="font-size:14px; color:oklch(0.5 0.02 60); margin-top:6px;">Offline product &amp; pricing sheet — sale price auto-calculates at wholesale +35%</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button onclick="{{ exportCSV }}" style="display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:8px; border:1px solid oklch(0.85 0.02 70); background:white; color:oklch(0.3 0.02 60); font-size:14px; font-weight:600; cursor:pointer;" style-hover="background:oklch(0.96 0.015 70);">
+        ⇩ Export CSV
+      </button>
+      <button onclick="{{ addRow }}" style="display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:8px; border:none; background:oklch(0.35 0.05 55); color:white; font-size:14px; font-weight:600; cursor:pointer;" style-hover="background:oklch(0.3 0.05 55);">
+        + Add product
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary strip -->
+  <div style="display:flex; gap:14px; margin-bottom:22px; flex-wrap:wrap;">
+    <div style="background:white; border:1px solid oklch(0.92 0.01 70); border-radius:10px; padding:12px 18px; min-width:120px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:oklch(0.55 0.02 60); font-weight:600;">Products</div>
+      <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; margin-top:2px;">{{ totalCount }}</div>
+    </div>
+    <div style="background:white; border:1px solid oklch(0.92 0.01 70); border-radius:10px; padding:12px 18px; min-width:120px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:oklch(0.55 0.02 60); font-weight:600;">Low stock</div>
+      <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; margin-top:2px; color:{{ lowStockColor }};">{{ lowStockCount }}</div>
+    </div>
+    <div style="background:white; border:1px solid oklch(0.92 0.01 70); border-radius:10px; padding:12px 18px; min-width:150px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:oklch(0.55 0.02 60); font-weight:600;">Wholesale value</div>
+      <div style="font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; margin-top:2px;">{{ totalWholesaleDisplay }}</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+    <input placeholder="Search products…" value="{{ search }}" oninput="{{ onSearch }}" style="padding:9px 14px; border-radius:8px; border:1px solid oklch(0.88 0.01 70); background:white; font-size:14px; min-width:220px; outline:none;" style-focus="border-color:oklch(0.6 0.05 60);" />
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <sc-for list="{{ categoryChips }}" as="chip" hint-placeholder-count="6">
+        <button onclick="{{ chip.onClick }}" style="padding:7px 13px; border-radius:999px; border:1px solid {{ chip.border }}; background:{{ chip.bg }}; color:{{ chip.fg }}; font-size:13px; font-weight:600; cursor:pointer;">{{ chip.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div style="background:white; border:1px solid oklch(0.91 0.01 70); border-radius:12px; overflow:hidden; overflow-x:auto;">
+    <table style="border-collapse:collapse; width:100%; min-width:1400px; font-size:13.5px;">
+      <thead>
+        <tr style="background:oklch(0.97 0.008 75);">
+          <th onclick="{{ sortBy_category }}" style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); cursor:pointer; white-space:nowrap; width:130px;">Category{{ sortArrow_category }}</th>
+          <th onclick="{{ sortBy_product }}" style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); cursor:pointer; white-space:nowrap; min-width:180px;">Product{{ sortArrow_product }}</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:90px;">Size</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:90px;">Unit</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:110px;">SKU</th>
+          <th onclick="{{ sortBy_wholesale }}" style="text-align:right; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); cursor:pointer; white-space:nowrap; width:110px;">Wholesale{{ sortArrow_wholesale }}</th>
+          <th style="text-align:right; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:120px;">Sale (+35%)</th>
+          <th onclick="{{ sortBy_stock }}" style="text-align:right; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); cursor:pointer; white-space:nowrap; width:90px;">Stock{{ sortArrow_stock }}</th>
+          <th style="text-align:right; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:100px;">Reorder at</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; min-width:140px;">Supplier</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; width:120px;">Status</th>
+          <th style="text-align:left; padding:11px 12px; font-weight:600; color:oklch(0.45 0.02 60); border-bottom:1px solid oklch(0.9 0.01 70); white-space:nowrap; min-width:160px;">Notes</th>
+          <th style="width:36px; border-bottom:1px solid oklch(0.9 0.01 70);"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+          <tr style="background:{{ row.rowBg }}; border-bottom:1px solid oklch(0.94 0.008 70);">
+            <td style="padding:6px 8px;">
+              <select value="{{ row.category }}" onchange="{{ row.onCategory }}" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:{{ row.catBg }}; color:{{ row.catFg }}; font-size:12.5px; font-weight:600; cursor:pointer; outline:none;">
+                <sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+                  <option value="{{ c }}">{{ c }}</option>
+                </sc-for>
+              </select>
+            </td>
+            <td style="padding:6px 8px;"><input value="{{ row.product }}" oninput="{{ row.onProduct }}" placeholder="Product name" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13.5px; font-weight:500; outline:none;" style-hover="background:oklch(0.97 0.006 70);" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px;"><input value="{{ row.size }}" oninput="{{ row.onSize }}" placeholder="—" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13px; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px;"><input value="{{ row.unit }}" oninput="{{ row.onUnit }}" placeholder="each" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13px; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px;"><input value="{{ row.sku }}" oninput="{{ row.onSku }}" placeholder="—" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:12.5px; font-family:'IBM Plex Mono',monospace; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px; text-align:right;">
+              <div style="display:flex; align-items:center; justify-content:flex-end; gap:2px;">
+                <span style="color:oklch(0.6 0.02 60); font-size:12.5px;">£</span>
+                <input value="{{ row.wholesale }}" oninput="{{ row.onWholesale }}" placeholder="0.00" inputmode="decimal" style="width:70px; padding:6px 6px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13.5px; font-family:'IBM Plex Mono',monospace; text-align:right; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" />
+              </div>
+            </td>
+            <td style="padding:6px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13.5px; font-weight:600; color:oklch(0.32 0.05 145);" title="= wholesale × 1.35">{{ row.saleDisplay }}</td>
+            <td style="padding:6px 8px; text-align:right;"><input value="{{ row.stock }}" oninput="{{ row.onStock }}" placeholder="—" inputmode="numeric" style="width:56px; padding:6px 6px; border-radius:6px; border:1px solid transparent; background:{{ row.stockBg }}; color:{{ row.stockFg }}; font-weight:{{ row.stockWeight }}; font-size:13.5px; font-family:'IBM Plex Mono',monospace; text-align:right; outline:none;" style-focus="border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px; text-align:right;"><input value="{{ row.reorder }}" oninput="{{ row.onReorder }}" placeholder="—" inputmode="numeric" style="width:56px; padding:6px 6px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13.5px; font-family:'IBM Plex Mono',monospace; text-align:right; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px;"><input value="{{ row.supplier }}" oninput="{{ row.onSupplier }}" placeholder="—" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13px; outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 8px;">
+              <select value="{{ row.status }}" onchange="{{ row.onStatus }}" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; color:{{ row.statusFg }}; font-size:12.5px; font-weight:600; outline:none; cursor:pointer;">
+                <option value="Active">Active</option>
+                <option value="Seasonal">Seasonal</option>
+                <option value="Discontinued">Discontinued</option>
+              </select>
+            </td>
+            <td style="padding:6px 8px;"><input value="{{ row.notes }}" oninput="{{ row.onNotes }}" placeholder="—" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid transparent; background:transparent; font-size:13px; color:oklch(0.45 0.02 60); outline:none;" style-focus="background:oklch(0.97 0.01 60); border-color:oklch(0.85 0.03 60);" /></td>
+            <td style="padding:6px 4px; text-align:center;">
+              <button onclick="{{ row.onDelete }}" title="Delete row" style="width:26px; height:26px; border-radius:6px; border:none; background:transparent; color:oklch(0.65 0.02 40); font-size:15px; cursor:pointer; line-height:1;" style-hover="background:oklch(0.94 0.04 30); color:oklch(0.5 0.15 30);">×</button>
+            </td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+    <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:40px; text-align:center; color:oklch(0.6 0.02 60); font-size:14px;">No products match — try clearing the search or category filter.</div>
+    </sc-if>
+  </div>
+
+  <div style="margin-top:16px; font-size:12.5px; color:oklch(0.6 0.02 60); display:flex; gap:18px; flex-wrap:wrap;">
+    <span>Sale price = wholesale price × 1.35, rounded to the cent — edit wholesale and it recalculates.</span>
+    <span style="color:oklch(0.55 0.15 30); font-weight:600;">● red stock = at or below reorder threshold</span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+
+  constructor(props) {
+    super(props);
+
+    this.categories = ["Snacks", "Food", "Cellar", "Firewood", "Local Goods", "Essentials"];
+    this.catHues = {
+      "Snacks": 55,
+      "Food": 30,
+      "Cellar": 145,
+      "Firewood": 15,
+      "Local Goods": 200,
+      "Essentials": 260
+    };
+    this.uidCounter = 1;
+
+    this.state = {
+      rows: this.categories.map((c) => this.makeRow(c)),
+      search: "",
+      filterCategory: "All",
+      sortKey: null,
+      sortDir: 1
+    };
+
+    this.addRow = this.addRow.bind(this);
+    this.onSearch = this.onSearch.bind(this);
+    this.exportCSV = this.exportCSV.bind(this);
+  }
+
+  catColor(cat) {
+    const hue = this.catHues[cat] || 60;
+    return {
+      bg: "oklch(0.94 0.05 " + hue + ")",
+      fg: "oklch(0.32 0.09 " + hue + ")",
+      border: "oklch(0.86 0.06 " + hue + ")"
+    };
+  }
+
+  makeRow(category) {
+    return {
+      id: this.uidCounter++,
+      category: category || this.categories[0],
+      product: "",
+      size: "",
+      unit: "",
+      sku: "",
+      wholesale: "",
+      stock: "",
+      reorder: "",
+      supplier: "",
+      status: "Active",
+      notes: ""
+    };
+  }
+
+  addRow() {
+    const cat = this.state.filterCategory !== "All" ? this.state.filterCategory : undefined;
+    this.setState((s) => ({ rows: [...s.rows, this.makeRow(cat)] }));
+  }
+
+  deleteRow(id) {
+    this.setState((s) => ({ rows: s.rows.filter((r) => r.id !== id) }));
+  }
+
+  updateField(id, field, value) {
+    this.setState((s) => ({
+      rows: s.rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    }));
+  }
+
+  onSearch(e) {
+    this.setState({ search: e.target.value });
+  }
+
+  setFilter(cat) {
+    this.setState({ filterCategory: cat });
+  }
+
+  setSort(key) {
+    this.setState((s) => ({
+      sortKey: key,
+      sortDir: s.sortKey === key ? -s.sortDir : 1
+    }));
+  }
+
+  exportCSV() {
+    const headers = ["Category", "Product", "Size", "Unit", "SKU", "Wholesale Price", "Sale Price (+35%)", "Stock", "Reorder At", "Supplier", "Status", "Notes"];
+    const lines = [headers.join(",")];
+    this.state.rows.forEach((r) => {
+      const wholesale = parseFloat(r.wholesale) || 0;
+      const sale = (wholesale * 1.35).toFixed(2);
+      const vals = [r.category, r.product, r.size, r.unit, r.sku, r.wholesale, sale, r.stock, r.reorder, r.supplier, r.status, r.notes];
+      lines.push(vals.map((v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"').join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pure-cabin-shop-inventory.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const self = this;
+
+    const matchesSearch = (r) => {
+      if (!s.search.trim()) return true;
+      const q = s.search.toLowerCase();
+      return (r.product || "").toLowerCase().indexOf(q) !== -1 ||
+             (r.sku || "").toLowerCase().indexOf(q) !== -1 ||
+             (r.supplier || "").toLowerCase().indexOf(q) !== -1;
+    };
+    const matchesFilter = (r) => s.filterCategory === "All" || r.category === s.filterCategory;
+
+    let filtered = s.rows.filter((r) => matchesSearch(r) && matchesFilter(r));
+
+    if (s.sortKey) {
+      const key = s.sortKey;
+      filtered = filtered.slice().sort((a, b) => {
+        let av = a[key], bv = b[key];
+        if (key === "wholesale" || key === "stock") {
+          av = parseFloat(av) || 0;
+          bv = parseFloat(bv) || 0;
+        } else {
+          av = (av || "").toString().toLowerCase();
+          bv = (bv || "").toString().toLowerCase();
+        }
+        if (av < bv) return -1 * s.sortDir;
+        if (av > bv) return 1 * s.sortDir;
+        return 0;
+      });
+    }
+
+    const rows = filtered.map((r) => {
+      const wholesale = parseFloat(r.wholesale);
+      const saleDisplay = isNaN(wholesale) ? "—" : "£" + (wholesale * 1.35).toFixed(2);
+      const stockNum = r.stock !== "" ? parseFloat(r.stock) : NaN;
+      const reorderNum = r.reorder !== "" ? parseFloat(r.reorder) : NaN;
+      const isLow = !isNaN(stockNum) && !isNaN(reorderNum) && stockNum <= reorderNum;
+      const cc = self.catColor(r.category);
+      const statusFg = r.status === "Discontinued" ? "oklch(0.55 0.15 30)" : r.status === "Seasonal" ? "oklch(0.5 0.1 75)" : "oklch(0.4 0.06 145)";
+
+      return Object.assign({}, r, {
+        rowBg: isLow ? "oklch(0.98 0.03 30)" : "white",
+        catBg: cc.bg,
+        catFg: cc.fg,
+        saleDisplay: saleDisplay,
+        stockBg: isLow ? "oklch(0.93 0.06 30)" : "transparent",
+        stockFg: isLow ? "oklch(0.45 0.15 30)" : "inherit",
+        stockWeight: isLow ? 700 : 500,
+        statusFg: statusFg,
+        onCategory: (e) => self.updateField(r.id, "category", e.target.value),
+        onProduct: (e) => self.updateField(r.id, "product", e.target.value),
+        onSize: (e) => self.updateField(r.id, "size", e.target.value),
+        onUnit: (e) => self.updateField(r.id, "unit", e.target.value),
+        onSku: (e) => self.updateField(r.id, "sku", e.target.value),
+        onWholesale: (e) => self.updateField(r.id, "wholesale", e.target.value),
+        onStock: (e) => self.updateField(r.id, "stock", e.target.value),
+        onReorder: (e) => self.updateField(r.id, "reorder", e.target.value),
+        onSupplier: (e) => self.updateField(r.id, "supplier", e.target.value),
+        onStatus: (e) => self.updateField(r.id, "status", e.target.value),
+        onNotes: (e) => self.updateField(r.id, "notes", e.target.value),
+        onDelete: () => self.deleteRow(r.id)
+      });
+    });
+
+    const totalWholesale = s.rows.reduce((sum, r) => sum + (parseFloat(r.wholesale) || 0) * (parseFloat(r.stock) || 0), 0);
+    const lowStockCount = s.rows.filter((r) => {
+      const stockNum = r.stock !== "" ? parseFloat(r.stock) : NaN;
+      const reorderNum = r.reorder !== "" ? parseFloat(r.reorder) : NaN;
+      return !isNaN(stockNum) && !isNaN(reorderNum) && stockNum <= reorderNum;
+    }).length;
+
+    const arrow = (key) => (s.sortKey === key ? (s.sortDir === 1 ? " ↑" : " ↓") : "");
+
+    const chipStyle = (cat, active) => {
+      if (cat === "All") {
+        return active
+          ? { bg: "oklch(0.35 0.05 55)", fg: "white", border: "oklch(0.35 0.05 55)" }
+          : { bg: "white", fg: "oklch(0.4 0.02 60)", border: "oklch(0.86 0.01 70)" };
+      }
+      const cc = self.catColor(cat);
+      return active
+        ? { bg: cc.fg, fg: "white", border: cc.fg }
+        : { bg: cc.bg, fg: cc.fg, border: cc.border };
+    };
+
+    const categoryChips = ["All"].concat(this.categories).map((cat) => {
+      const active = s.filterCategory === cat;
+      const cs = chipStyle(cat, active);
+      return {
+        label: cat,
+        bg: cs.bg,
+        fg: cs.fg,
+        border: cs.border,
+        onClick: () => self.setFilter(cat)
+      };
+    });
+
+    return {
+      rows: rows,
+      categories: this.categories,
+      categoryChips: categoryChips,
+      search: s.search,
+      onSearch: this.onSearch,
+      noRows: rows.length === 0,
+      totalCount: s.rows.length,
+      lowStockCount: lowStockCount,
+      lowStockColor: lowStockCount > 0 ? "oklch(0.55 0.15 30)" : "inherit",
+      totalWholesaleDisplay: "£" + totalWholesale.toFixed(2),
+      sortBy_category: () => self.setSort("category"),
+      sortBy_product: () => self.setSort("product"),
+      sortBy_wholesale: () => self.setSort("wholesale"),
+      sortBy_stock: () => self.setSort("stock"),
+      sortArrow_category: arrow("category"),
+      sortArrow_product: arrow("product"),
+      sortArrow_wholesale: arrow("wholesale"),
+      sortArrow_stock: arrow("stock"),
+      addRow: this.addRow,
+      exportCSV: this.exportCSV
+    };
+  }
+}
+</script>
+</body>
+</html>
