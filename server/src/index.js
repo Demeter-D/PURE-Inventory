@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -29,6 +30,10 @@ const EDITABLE_FIELDS = [
 ];
 
 const app = express();
+// Render (and most PaaS hosts) sit behind a reverse proxy; trust its
+// X-Forwarded-For so rate limiting keys on the real client IP.
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: CLIENT_ORIGIN, credentials: true }
@@ -37,6 +42,14 @@ const io = new Server(server, {
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Try again later." }
+});
 
 const isProd = process.env.NODE_ENV === "production";
 const cookieOpts = {
@@ -75,7 +88,7 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ user });
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", loginLimiter, (req, res) => {
   const { userId, passcode } = req.body || {};
   const result = login(String(userId || "").toLowerCase(), String(passcode || ""));
   if (!result) return res.status(401).json({ error: "Invalid name or passcode" });

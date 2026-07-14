@@ -3,8 +3,8 @@ const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const COOKIE_NAME = "pure_inventory_session";
 
-// Allowlist of the two named collaborators. Each has their own passcode so
-// access can be revoked/rotated per-person without affecting the other.
+// Allowlist of the named collaborators. Each has their own passcode so
+// access can be revoked/rotated per-person without affecting the others.
 const COLLABORATORS = {
   tom: {
     name: "Tom",
@@ -13,6 +13,10 @@ const COLLABORATORS = {
   lara: {
     name: "Lara",
     passcode: process.env.LARA_PASSCODE || "lara-cabin-shop"
+  },
+  dan: {
+    name: "Dan",
+    passcode: process.env.DAN_PASSCODE || "dan-cabin-shop"
   }
 };
 

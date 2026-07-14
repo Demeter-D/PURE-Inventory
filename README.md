@@ -36,9 +36,9 @@ cp server/.env.example server/.env   # then edit the passcodes/secret (see below
 npm run dev            # runs backend on :4000 and frontend on :5173 concurrently
 ```
 
-Open http://localhost:5173, sign in as Tom or Lara with the passcode set in
+Open http://localhost:5173, sign in as Tom, Lara, or Dan with the passcode set in
 `server/.env`, and start editing. Open a second browser (or an incognito window) and
-sign in as the other collaborator to see edits sync live between the two sessions.
+sign in as another collaborator to see edits sync live between sessions.
 
 ### Environment variables (`server/.env`)
 
@@ -49,6 +49,11 @@ sign in as the other collaborator to see edits sync live between the two session
 | `JWT_SECRET`    | Secret used to sign session cookies — set a long random value     |
 | `TOM_PASSCODE`  | Tom's sign-in passcode                                            |
 | `LARA_PASSCODE` | Lara's sign-in passcode                                           |
+| `DAN_PASSCODE`  | Dan's sign-in passcode                                            |
+
+The login endpoint is rate-limited (10 attempts per 15 minutes per IP) to protect
+against passcode brute-forcing — worth knowing if a collaborator picks a short/weak
+passcode.
 
 Change `TOM_PASSCODE`/`LARA_PASSCODE`/`JWT_SECRET` from the example defaults before
 sharing this with Tom and Lara — the checked-in `.env.example` values are placeholders,
