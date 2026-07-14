@@ -1,7 +1,6 @@
 require("dotenv").config();
 const path = require("path");
 const fs = require("fs");
-const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -9,7 +8,7 @@ const rateLimit = require("express-rate-limit");
 const http = require("http");
 const { Server } = require("socket.io");
 
-const { db, CATEGORIES } = require("./db");
+const { pool, init, CATEGORIES } = require("./db");
 const { login, verify, requireAuth, COOKIE_NAME, COLLABORATORS } = require("./auth");
 
 const PORT = process.env.PORT || 4000;
@@ -74,9 +73,13 @@ function serializeProduct(row) {
     status: row.status,
     notes: row.notes,
     sortOrder: row.sort_order,
-    updatedAt: row.updated_at,
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
     updatedBy: row.updated_by
   };
+}
+
+function asyncRoute(handler) {
+  return (req, res, next) => handler(req, res, next).catch(next);
 }
 
 // ---- Auth routes ----
@@ -111,59 +114,74 @@ app.get("/api/collaborators", (req, res) => {
 
 app.use("/api/products", requireAuth);
 
-app.get("/api/products", (req, res) => {
-  const rows = db.prepare("SELECT * FROM products ORDER BY sort_order ASC").all();
-  res.json({ products: rows.map(serializeProduct), categories: CATEGORIES, statuses: STATUSES });
-});
+app.get(
+  "/api/products",
+  asyncRoute(async (req, res) => {
+    const { rows } = await pool.query("SELECT * FROM products ORDER BY sort_order ASC");
+    res.json({ products: rows.map(serializeProduct), categories: CATEGORIES, statuses: STATUSES });
+  })
+);
 
-app.post("/api/products", (req, res) => {
-  const maxOrder = db.prepare("SELECT MAX(sort_order) AS m FROM products").get().m || 0;
-  const id = crypto.randomUUID();
-  const category = CATEGORIES.includes(req.body?.category) ? req.body.category : CATEGORIES[0];
-  db.prepare(
-    `INSERT INTO products (id, category, sort_order, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, datetime('now'))`
-  ).run(id, category, maxOrder + 1, req.user.name);
-  const row = db.prepare("SELECT * FROM products WHERE id = ?").get(id);
-  const product = serializeProduct(row);
-  io.emit("product:created", { product, by: req.user.name });
-  res.status(201).json({ product });
-});
+app.post(
+  "/api/products",
+  asyncRoute(async (req, res) => {
+    const { rows: maxRows } = await pool.query("SELECT COALESCE(MAX(sort_order), 0) AS m FROM products");
+    const nextOrder = maxRows[0].m + 1;
+    const category = CATEGORIES.includes(req.body?.category) ? req.body.category : CATEGORIES[0];
+    const { rows } = await pool.query(
+      `INSERT INTO products (category, sort_order, updated_by)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [category, nextOrder, req.user.name]
+    );
+    const product = serializeProduct(rows[0]);
+    io.emit("product:created", { product, by: req.user.name });
+    res.status(201).json({ product });
+  })
+);
 
-app.patch("/api/products/:id", (req, res) => {
-  const existing = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Not found" });
-
-  const updates = {};
-  for (const field of EDITABLE_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
-      updates[field] = String(req.body[field] ?? "");
+app.patch(
+  "/api/products/:id",
+  asyncRoute(async (req, res) => {
+    const updates = {};
+    for (const field of EDITABLE_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
+        updates[field] = String(req.body[field] ?? "");
+      }
     }
-  }
-  if (updates.category && !CATEGORIES.includes(updates.category)) delete updates.category;
-  if (updates.status && !STATUSES.includes(updates.status)) delete updates.status;
+    if (updates.category && !CATEGORIES.includes(updates.category)) delete updates.category;
+    if (updates.status && !STATUSES.includes(updates.status)) delete updates.status;
 
-  const keys = Object.keys(updates);
-  if (keys.length === 0) return res.json({ product: serializeProduct(existing) });
+    const keys = Object.keys(updates);
+    if (keys.length === 0) {
+      const { rows } = await pool.query("SELECT * FROM products WHERE id = $1", [req.params.id]);
+      if (!rows[0]) return res.status(404).json({ error: "Not found" });
+      return res.json({ product: serializeProduct(rows[0]) });
+    }
 
-  const setClause = keys.map((k) => `${k} = @${k}`).join(", ");
-  db.prepare(
-    `UPDATE products SET ${setClause}, updated_at = datetime('now'), updated_by = @updated_by WHERE id = @id`
-  ).run({ ...updates, updated_by: req.user.name, id: req.params.id });
+    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
+    const values = keys.map((k) => updates[k]);
+    const { rows } = await pool.query(
+      `UPDATE products SET ${setClause}, updated_at = now(), updated_by = $${keys.length + 1}
+       WHERE id = $${keys.length + 2} RETURNING *`,
+      [...values, req.user.name, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Not found" });
 
-  const row = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-  const product = serializeProduct(row);
-  io.emit("product:updated", { product, by: req.user.name });
-  res.json({ product });
-});
+    const product = serializeProduct(rows[0]);
+    io.emit("product:updated", { product, by: req.user.name });
+    res.json({ product });
+  })
+);
 
-app.delete("/api/products/:id", (req, res) => {
-  const existing = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Not found" });
-  db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-  io.emit("product:deleted", { id: req.params.id, by: req.user.name });
-  res.json({ ok: true });
-});
+app.delete(
+  "/api/products/:id",
+  asyncRoute(async (req, res) => {
+    const { rows } = await pool.query("DELETE FROM products WHERE id = $1 RETURNING id", [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: "Not found" });
+    io.emit("product:deleted", { id: req.params.id, by: req.user.name });
+    res.json({ ok: true });
+  })
+);
 
 // ---- Serve built frontend in production ----
 
@@ -193,6 +211,19 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {});
 });
 
-server.listen(PORT, () => {
-  console.log(`PURE Cabin Shop Inventory server listening on port ${PORT}`);
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
 });
+
+init()
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log(`PURE Cabin Shop Inventory server listening on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  });
