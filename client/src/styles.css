@@ -247,7 +247,6 @@ button {
 
 .inv-table {
   border-collapse: collapse;
-  table-layout: fixed;
   font-size: 13.5px;
 }
 
@@ -283,6 +282,7 @@ button {
 
 .cell-input {
   width: 100%;
+  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
@@ -313,6 +313,7 @@ button {
 
 .category-select {
   width: 100%;
+  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
@@ -322,13 +323,11 @@ button {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
 .status-select {
   width: 100%;
+  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
