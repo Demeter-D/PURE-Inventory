@@ -43,6 +43,8 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
             <th style={{ width: 110 }}>SKU</th>
             <SortHeader label="Wholesale" colKey={SORTABLE.wholesale} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: 110 }} />
             <th className="num" style={{ width: 120 }}>Sale (+35%)</th>
+            <th className="num" style={{ width: 120 }}>Sale (+50%)</th>
+            <th className="num" style={{ width: 120 }}>Sale Actual</th>
             <SortHeader label="Stock" colKey={SORTABLE.stock} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: 90 }} />
             <th className="num" style={{ width: 100 }}>Reorder at</th>
             <th style={{ minWidth: 140 }}>Supplier</th>
@@ -55,7 +57,8 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
           {rows.map((row) => {
             const low = isLowStock(row.stock, row.reorder);
             const cc = categoryColor(row.category);
-            const sale = saleValue(row.wholesale);
+            const sale35 = saleValue(row.wholesale, 1.35);
+            const sale50 = saleValue(row.wholesale, 1.5);
             const rowBg = low ? "oklch(0.98 0.03 30)" : "white";
             return (
               <tr key={row.id} style={{ background: rowBg }}>
@@ -121,7 +124,23 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
                   </div>
                 </td>
                 <td className="sale-cell mono" title="= wholesale × 1.35">
-                  {sale == null ? "—" : `£${sale.toFixed(2)}`}
+                  {sale35 == null ? "—" : `£${sale35.toFixed(2)}`}
+                </td>
+                <td className="sale-cell mono" title="= wholesale × 1.5">
+                  {sale50 == null ? "—" : `£${sale50.toFixed(2)}`}
+                </td>
+                <td>
+                  <div className="wholesale-cell">
+                    <span className="currency-prefix">£</span>
+                    <input
+                      className="cell-input mono num stock-input"
+                      style={{ width: 70 }}
+                      inputMode="decimal"
+                      value={row.saleActual}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "saleActual", e.target.value)}
+                    />
+                  </div>
                 </td>
                 <td>
                   <input

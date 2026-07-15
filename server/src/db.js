@@ -26,11 +26,15 @@ async function init() {
       supplier TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'Active',
       notes TEXT NOT NULL DEFAULT '',
+      sale_actual TEXT NOT NULL DEFAULT '',
       sort_order INTEGER NOT NULL DEFAULT 0,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_by TEXT
     );
   `);
+
+  // Migration for databases created before sale_actual existed.
+  await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_actual TEXT NOT NULL DEFAULT '';`);
 
   const { rows } = await pool.query("SELECT COUNT(*)::int AS c FROM products");
   if (rows[0].c === 0) {

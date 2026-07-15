@@ -67,9 +67,11 @@ Render with a free Postgres database.
 ## Data model
 
 Each product row: `category` (enum), `product`, `size`, `unit`, `sku`, `wholesale`
-(£), `stock`, `reorder` (low-stock threshold), `supplier`, `status` (enum), `notes`.
-Sale price is never stored — it's always computed as `wholesale × 1.35`, rounded to the
-cent, both in the UI and in CSV exports.
+(£), `stock`, `reorder` (low-stock threshold), `supplier`, `status` (enum), `notes`,
+`saleActual` (free text/number, no formula). Sale (+35%) and Sale (+50%) are never
+stored — always computed as `wholesale × 1.35` / `wholesale × 1.5`, rounded to the cent,
+both in the UI and in CSV exports. `saleActual` is a plain editable field for recording
+the real sale price achieved, independent of either formula.
 
 ## Features
 

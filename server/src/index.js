@@ -25,8 +25,10 @@ const EDITABLE_FIELDS = [
   "reorder",
   "supplier",
   "status",
-  "notes"
+  "notes",
+  "saleActual"
 ];
+const FIELD_TO_COLUMN = { saleActual: "sale_actual" };
 
 const app = express();
 // Render (and most PaaS hosts) sit behind a reverse proxy; trust its
@@ -72,6 +74,7 @@ function serializeProduct(row) {
     supplier: row.supplier,
     status: row.status,
     notes: row.notes,
+    saleActual: row.sale_actual,
     sortOrder: row.sort_order,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
     updatedBy: row.updated_by
@@ -158,7 +161,7 @@ app.patch(
       return res.json({ product: serializeProduct(rows[0]) });
     }
 
-    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
+    const setClause = keys.map((k, i) => `${FIELD_TO_COLUMN[k] || k} = $${i + 1}`).join(", ");
     const values = keys.map((k) => updates[k]);
     const { rows } = await pool.query(
       `UPDATE products SET ${setClause}, updated_at = now(), updated_by = $${keys.length + 1}

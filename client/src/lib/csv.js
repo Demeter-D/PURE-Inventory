@@ -1,6 +1,6 @@
-export function saleValue(wholesale) {
+export function saleValue(wholesale, multiplier = 1.35) {
   const n = parseFloat(wholesale);
-  return Number.isNaN(n) ? null : Math.round(n * 1.35 * 100) / 100;
+  return Number.isNaN(n) ? null : Math.round(n * multiplier * 100) / 100;
 }
 
 export function exportCSV(rows) {
@@ -12,6 +12,8 @@ export function exportCSV(rows) {
     "SKU",
     "Wholesale Price",
     "Sale Price (+35%)",
+    "Sale Price (+50%)",
+    "Sale Actual",
     "Stock",
     "Reorder At",
     "Supplier",
@@ -20,7 +22,8 @@ export function exportCSV(rows) {
   ];
   const lines = [headers.join(",")];
   rows.forEach((r) => {
-    const sale = saleValue(r.wholesale);
+    const sale35 = saleValue(r.wholesale, 1.35);
+    const sale50 = saleValue(r.wholesale, 1.5);
     const vals = [
       r.category,
       r.product,
@@ -28,7 +31,9 @@ export function exportCSV(rows) {
       r.unit,
       r.sku,
       r.wholesale,
-      sale == null ? "" : sale.toFixed(2),
+      sale35 == null ? "" : sale35.toFixed(2),
+      sale50 == null ? "" : sale50.toFixed(2),
+      r.saleActual,
       r.stock,
       r.reorder,
       r.supplier,
