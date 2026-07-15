@@ -63,8 +63,14 @@ edits sync live between sessions.
 
 ## Notes
 
-- Free Render web services spin down after ~15 minutes of inactivity and take a few
+- Free Render web services spin down after ~15 minutes of inactivity and take 30-50
   seconds to wake back up on the next request — normal for the free tier, not a bug.
+  One consequence: link-preview crawlers (WhatsApp, iMessage, Slack, etc.) have short
+  fetch timeouts and will time out against a cold instance, showing no title/image and
+  then caching that empty result per-URL. If a shared link isn't unfurling, open the
+  site yourself first to wake it up, then re-share with a cache-busting query string
+  (e.g. `?v=2`) since most platforms cache per exact URL. This goes away entirely on a
+  paid instance type, which doesn't spin down.
 - Rotate `TOM_PASSCODE`/`LARA_PASSCODE`/`DAN_PASSCODE`/`JWT_SECRET` any time from the
   Render dashboard's Environment tab; it redeploys automatically.
 - If you shared a Render API key anywhere while setting this up, consider rotating it
