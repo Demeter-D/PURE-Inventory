@@ -247,6 +247,7 @@ button {
 
 .inv-table {
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 13.5px;
 }
 
@@ -282,7 +283,6 @@ button {
 
 .cell-input {
   width: 100%;
-  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
@@ -313,7 +313,6 @@ button {
 
 .category-select {
   width: 100%;
-  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
@@ -327,7 +326,6 @@ button {
 
 .status-select {
   width: 100%;
-  min-width: max-content;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
@@ -358,14 +356,6 @@ button {
   text-align: right;
   font-weight: 600;
   color: oklch(0.32 0.05 145);
-}
-
-.stock-input {
-  width: 56px;
-}
-
-.reorder-input {
-  width: 56px;
 }
 
 .delete-btn {
