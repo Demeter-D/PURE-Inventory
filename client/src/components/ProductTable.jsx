@@ -36,19 +36,19 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
       <table className="inv-table">
         <thead>
           <tr>
-            <SortHeader label="Category" colKey={SORTABLE.category} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: 150 }} />
-            <SortHeader label="Product" colKey={SORTABLE.product} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: 260 }} />
+            <SortHeader label="Category" colKey={SORTABLE.category} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: 180 }} />
+            <SortHeader label="Product" colKey={SORTABLE.product} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: 270 }} />
             <th style={{ width: 90 }}>Size</th>
-            <th style={{ width: 90 }}>Unit</th>
+            <th style={{ width: 110 }}>Unit</th>
             <th style={{ width: 110 }}>SKU</th>
             <SortHeader label="Wholesale" colKey={SORTABLE.wholesale} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: 110 }} />
             <th className="num" style={{ width: 120 }}>Sale (+35%)</th>
             <th className="num" style={{ width: 120 }}>Sale (+50%)</th>
             <th className="num" style={{ width: 120 }}>Sale Actual</th>
             <SortHeader label="Stock" colKey={SORTABLE.stock} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: 90 }} />
-            <th className="num" style={{ width: 100 }}>Reorder at</th>
-            <th style={{ width: 160 }}>Supplier</th>
-            <th style={{ width: 120 }}>Status</th>
+            <th className="num" style={{ width: 110 }}>Reorder at</th>
+            <th style={{ width: 210 }}>Supplier</th>
+            <th style={{ width: 160 }}>Status</th>
             <th style={{ width: 180 }}>Notes</th>
             <th style={{ width: 36 }} />
           </tr>
@@ -83,7 +83,7 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
                     value={row.product}
                     placeholder="Product name"
                     minWidth={150}
-                    maxWidth={240}
+                    maxWidth={250}
                     onChange={(e) => onFieldChange(row.id, "product", e.target.value)}
                   />
                 </td>

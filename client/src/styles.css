@@ -291,6 +291,7 @@ button {
   outline: none;
   color: inherit;
   font-weight: inherit;
+  text-overflow: ellipsis;
 }
 
 .cell-input:hover {
@@ -321,6 +322,9 @@ button {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .status-select {
@@ -333,6 +337,9 @@ button {
   font-weight: 600;
   outline: none;
   cursor: pointer;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .wholesale-cell {
