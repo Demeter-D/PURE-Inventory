@@ -180,9 +180,6 @@ export default function App() {
         <div>
           <div className="eyebrow">PURE × Stockley</div>
           <h1 className="page-title">Cabin Shop Inventory</h1>
-          <div className="page-subtitle">
-            Shared product &amp; pricing sheet — sale price auto-calculates at wholesale +35%
-          </div>
         </div>
         <div className="header-actions">
           <div className="who-am-i">
@@ -273,7 +270,6 @@ export default function App() {
       />
 
       <div className="footnotes">
-        <span>Sale price = wholesale price × 1.35, rounded to the cent — edit wholesale and it recalculates.</span>
         <span className="footnote-red">● red stock = at or below reorder threshold</span>
       </div>
     </div>
