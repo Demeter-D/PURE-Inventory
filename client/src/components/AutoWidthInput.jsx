@@ -7,7 +7,7 @@ export default function AutoWidthInput({
   value,
   placeholder,
   minWidth = 150,
-  maxWidth = 420,
+  maxWidth = 240,
   padding = 26,
   style,
   ...rest

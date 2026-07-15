@@ -247,8 +247,7 @@ button {
 
 .inv-table {
   border-collapse: collapse;
-  width: 100%;
-  min-width: 1400px;
+  table-layout: fixed;
   font-size: 13.5px;
 }
 
