@@ -1,5 +1,6 @@
 import { CATEGORIES, STATUSES, categoryColor, statusColor } from "../lib/categories.js";
 import { saleValue } from "../lib/csv.js";
+import AutoWidthInput from "./AutoWidthInput.jsx";
 
 const SORTABLE = {
   category: "category",
@@ -73,7 +74,7 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
                   </select>
                 </td>
                 <td>
-                  <input
+                  <AutoWidthInput
                     className="cell-input"
                     style={{ fontWeight: 500 }}
                     value={row.product}
