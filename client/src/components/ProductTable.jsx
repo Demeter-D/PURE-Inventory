@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, STATUSES, categoryColor, statusColor } from "../lib/categories.js";
 import { saleValue } from "../lib/csv.js";
 import { measureTextWidth } from "../lib/measureText.js";
@@ -131,7 +131,27 @@ const COLUMNS = [
   },
 ];
 
+function useFontsReady() {
+  const [ready, setReady] = useState(
+    typeof document === "undefined" || !document.fonts || document.fonts.status === "loaded"
+  );
+
+  useEffect(() => {
+    if (ready || typeof document === "undefined" || !document.fonts) return;
+    document.fonts.ready.then(() => setReady(true));
+  }, [ready]);
+
+  return ready;
+}
+
 function useColumnWidths(rows) {
+  // IBM Plex Sans/Mono load asynchronously over the network. If widths are
+  // computed before they're ready, canvas measureText silently substitutes
+  // a narrower fallback font, permanently under-sizing every column since
+  // this only recomputes when `rows` changes — not when fonts finish
+  // loading. Recompute once fontsReady flips true to correct for that.
+  const fontsReady = useFontsReady();
+
   return useMemo(() => {
     const widths = {};
     for (const col of COLUMNS) {
@@ -143,7 +163,8 @@ function useColumnWidths(rows) {
       widths[col.key] = Math.ceil(max) + col.overhead;
     }
     return widths;
-  }, [rows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, fontsReady]);
 }
 
 function SortHeader({ label, sortKey, colKey, sortDir, onSort, align, ...rest }) {
