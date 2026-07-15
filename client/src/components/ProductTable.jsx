@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, STATUSES, categoryColor, statusColor } from "../lib/categories.js";
 import { saleValue } from "../lib/csv.js";
-import { measureTextWidth } from "../lib/measureText.js";
 
 const SORTABLE = {
   category: "category",
@@ -9,163 +7,6 @@ const SORTABLE = {
   wholesale: "wholesale",
   stock: "stock",
 };
-
-const SANS = (weight, size) => `${weight} ${size}px 'IBM Plex Sans', sans-serif`;
-const MONO = (weight, size) => `${weight} ${size}px 'IBM Plex Mono', monospace`;
-const HEADER_FONT = SANS(600, 13.5);
-
-// Each column measures its own header label plus every row's rendered value
-// (or placeholder) in the exact font/weight it's displayed with, so the
-// column width always matches the real font actually rendering — not a
-// guess tuned against whatever font happened to be available while testing.
-const TEXT_OVERHEAD = 40; // td padding + input padding + a little breathing room
-const SELECT_OVERHEAD = 40;
-const SELECT_ARROW_OVERHEAD = 56; // native <select> arrow needs extra room
-const CURRENCY_OVERHEAD = 58; // td + input padding + "£" prefix + flex gap
-const COMPUTED_CELL_OVERHEAD = 40; // td padding + .sale-cell's own padding
-
-const COLUMNS = [
-  {
-    key: "category",
-    label: "Category",
-    font: SANS(600, 12.5),
-    overhead: SELECT_OVERHEAD,
-    value: (row) => row.category,
-  },
-  {
-    key: "product",
-    label: "Product",
-    font: SANS(500, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.product || "Product name",
-  },
-  {
-    key: "size",
-    label: "Size",
-    font: SANS(400, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.size || "—",
-  },
-  {
-    key: "unit",
-    label: "Unit",
-    font: SANS(400, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.unit || "each",
-  },
-  {
-    key: "sku",
-    label: "SKU",
-    font: MONO(400, 12.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.sku || "—",
-  },
-  {
-    key: "wholesale",
-    label: "Wholesale",
-    font: MONO(400, 13.5),
-    overhead: CURRENCY_OVERHEAD,
-    value: (row) => row.wholesale || "0.00",
-  },
-  {
-    key: "sale35",
-    label: "Sale (+35%)",
-    font: MONO(600, 13.5),
-    overhead: COMPUTED_CELL_OVERHEAD,
-    value: (row) => {
-      const v = saleValue(row.wholesale, 1.35);
-      return v == null ? "—" : `£${v.toFixed(2)}`;
-    },
-  },
-  {
-    key: "sale50",
-    label: "Sale (+50%)",
-    font: MONO(600, 13.5),
-    overhead: COMPUTED_CELL_OVERHEAD,
-    value: (row) => {
-      const v = saleValue(row.wholesale, 1.5);
-      return v == null ? "—" : `£${v.toFixed(2)}`;
-    },
-  },
-  {
-    key: "saleActual",
-    label: "Sale Actual",
-    font: MONO(400, 13.5),
-    overhead: CURRENCY_OVERHEAD,
-    value: (row) => row.saleActual || "—",
-  },
-  {
-    key: "stock",
-    label: "Stock",
-    font: MONO(700, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.stock || "—",
-  },
-  {
-    key: "reorder",
-    label: "Reorder at",
-    font: MONO(400, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.reorder || "—",
-  },
-  {
-    key: "supplier",
-    label: "Supplier",
-    font: SANS(400, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.supplier || "—",
-  },
-  {
-    key: "status",
-    label: "Status",
-    font: SANS(600, 12.5),
-    overhead: SELECT_ARROW_OVERHEAD,
-    value: (row) => row.status,
-  },
-  {
-    key: "notes",
-    label: "Notes",
-    font: SANS(400, 13.5),
-    overhead: TEXT_OVERHEAD,
-    value: (row) => row.notes || "—",
-  },
-];
-
-function useFontsReady() {
-  const [ready, setReady] = useState(
-    typeof document === "undefined" || !document.fonts || document.fonts.status === "loaded"
-  );
-
-  useEffect(() => {
-    if (ready || typeof document === "undefined" || !document.fonts) return;
-    document.fonts.ready.then(() => setReady(true));
-  }, [ready]);
-
-  return ready;
-}
-
-function useColumnWidths(rows) {
-  // IBM Plex Sans/Mono load asynchronously over the network. If widths are
-  // computed before they're ready, canvas measureText silently substitutes
-  // a narrower fallback font, permanently under-sizing every column since
-  // this only recomputes when `rows` changes — not when fonts finish
-  // loading. Recompute once fontsReady flips true to correct for that.
-  const fontsReady = useFontsReady();
-
-  return useMemo(() => {
-    const widths = {};
-    for (const col of COLUMNS) {
-      let max = measureTextWidth(col.label, HEADER_FONT);
-      for (const row of rows) {
-        const w = measureTextWidth(col.value(row), col.font);
-        if (w > max) max = w;
-      }
-      widths[col.key] = Math.ceil(max) + col.overhead;
-    }
-    return widths;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, fontsReady]);
-}
 
 function SortHeader({ label, sortKey, colKey, sortDir, onSort, align, ...rest }) {
   const active = sortKey === colKey;
@@ -188,28 +29,45 @@ function isLowStock(stock, reorder) {
   return !Number.isNaN(s) && !Number.isNaN(r) && s <= r;
 }
 
-export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldChange, onDelete }) {
-  const w = useColumnWidths(rows);
+// Auto-fit editable cell. A hidden sizer span holding the cell's text gives
+// the cell its intrinsic width via the browser's own layout engine — real
+// loaded fonts included — and the input/select is overlaid to fill the cell.
+// When web fonts finish loading the sizer reflows automatically, so column
+// widths are always correct for whatever font is actually rendering.
+function FitCell({ sizerText, mono = false, badge = false, hasArrow = false, style, children }) {
+  const cls = ["fit", mono && "mono", badge && "badge", hasArrow && "has-arrow"]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <span className={cls} style={style}>
+      <span className="sizer" aria-hidden="true">
+        {sizerText || " "}
+      </span>
+      {children}
+    </span>
+  );
+}
 
+export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldChange, onDelete }) {
   return (
     <div className="table-card">
       <table className="inv-table">
         <thead>
           <tr>
-            <SortHeader label="Category" colKey={SORTABLE.category} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: w.category }} />
-            <SortHeader label="Product" colKey={SORTABLE.product} sortKey={sortKey} sortDir={sortDir} onSort={onSort} style={{ width: w.product }} />
-            <th style={{ width: w.size }}>Size</th>
-            <th style={{ width: w.unit }}>Unit</th>
-            <th style={{ width: w.sku }}>SKU</th>
-            <SortHeader label="Wholesale" colKey={SORTABLE.wholesale} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: w.wholesale }} />
-            <th className="num" style={{ width: w.sale35 }}>Sale (+35%)</th>
-            <th className="num" style={{ width: w.sale50 }}>Sale (+50%)</th>
-            <th className="num" style={{ width: w.saleActual }}>Sale Actual</th>
-            <SortHeader label="Stock" colKey={SORTABLE.stock} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" style={{ width: w.stock }} />
-            <th className="num" style={{ width: w.reorder }}>Reorder at</th>
-            <th style={{ width: w.supplier }}>Supplier</th>
-            <th style={{ width: w.status }}>Status</th>
-            <th style={{ width: w.notes }}>Notes</th>
+            <SortHeader label="Category" colKey={SORTABLE.category} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Product" colKey={SORTABLE.product} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <th>Size</th>
+            <th>Unit</th>
+            <th>SKU</th>
+            <SortHeader label="Wholesale" colKey={SORTABLE.wholesale} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+            <th className="num">Sale (+35%)</th>
+            <th className="num">Sale (+50%)</th>
+            <th className="num">Sale Actual</th>
+            <SortHeader label="Stock" colKey={SORTABLE.stock} sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+            <th className="num">Reorder at</th>
+            <th>Supplier</th>
+            <th>Status</th>
+            <th>Notes</th>
             <th style={{ width: 36 }} />
           </tr>
         </thead>
@@ -223,63 +81,73 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
             return (
               <tr key={row.id} style={{ background: rowBg }}>
                 <td>
-                  <select
-                    className="category-select"
-                    value={row.category}
-                    onChange={(e) => onFieldChange(row.id, "category", e.target.value)}
-                    style={{ background: cc.bg, color: cc.fg }}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                  <FitCell badge sizerText={row.category}>
+                    <select
+                      className="category-select"
+                      value={row.category}
+                      onChange={(e) => onFieldChange(row.id, "category", e.target.value)}
+                      style={{ background: cc.bg, color: cc.fg }}
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    style={{ fontWeight: 500 }}
-                    value={row.product}
-                    placeholder="Product name"
-                    onChange={(e) => onFieldChange(row.id, "product", e.target.value)}
-                  />
+                  <FitCell sizerText={row.product || "Product name"} style={{ fontWeight: 500 }}>
+                    <input
+                      className="cell-input"
+                      value={row.product}
+                      placeholder="Product name"
+                      onChange={(e) => onFieldChange(row.id, "product", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    value={row.size}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "size", e.target.value)}
-                  />
+                  <FitCell sizerText={row.size || "—"}>
+                    <input
+                      className="cell-input"
+                      value={row.size}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "size", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    value={row.unit}
-                    placeholder="each"
-                    onChange={(e) => onFieldChange(row.id, "unit", e.target.value)}
-                  />
+                  <FitCell sizerText={row.unit || "each"}>
+                    <input
+                      className="cell-input"
+                      value={row.unit}
+                      placeholder="each"
+                      onChange={(e) => onFieldChange(row.id, "unit", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input mono"
-                    style={{ fontSize: 12.5 }}
-                    value={row.sku}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "sku", e.target.value)}
-                  />
+                  <FitCell mono sizerText={row.sku || "—"} style={{ fontSize: 12.5 }}>
+                    <input
+                      className="cell-input"
+                      value={row.sku}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "sku", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
                   <div className="wholesale-cell">
                     <span className="currency-prefix">£</span>
-                    <input
-                      className="cell-input mono num"
-                      inputMode="decimal"
-                      value={row.wholesale}
-                      placeholder="0.00"
-                      onChange={(e) => onFieldChange(row.id, "wholesale", e.target.value)}
-                    />
+                    <FitCell mono sizerText={row.wholesale || "0.00"}>
+                      <input
+                        className="cell-input num"
+                        inputMode="decimal"
+                        value={row.wholesale}
+                        placeholder="0.00"
+                        onChange={(e) => onFieldChange(row.id, "wholesale", e.target.value)}
+                      />
+                    </FitCell>
                   </div>
                 </td>
                 <td className="sale-cell mono" title="= wholesale × 1.35">
@@ -291,68 +159,79 @@ export default function ProductTable({ rows, sortKey, sortDir, onSort, onFieldCh
                 <td>
                   <div className="wholesale-cell">
                     <span className="currency-prefix">£</span>
-                    <input
-                      className="cell-input mono num"
-                      inputMode="decimal"
-                      value={row.saleActual}
-                      placeholder="—"
-                      onChange={(e) => onFieldChange(row.id, "saleActual", e.target.value)}
-                    />
+                    <FitCell mono sizerText={row.saleActual || "—"}>
+                      <input
+                        className="cell-input num"
+                        inputMode="decimal"
+                        value={row.saleActual}
+                        placeholder="—"
+                        onChange={(e) => onFieldChange(row.id, "saleActual", e.target.value)}
+                      />
+                    </FitCell>
                   </div>
                 </td>
-                <td>
-                  <input
-                    className="cell-input mono num"
-                    inputMode="numeric"
-                    value={row.stock}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "stock", e.target.value)}
-                    style={{
-                      background: low ? "oklch(0.93 0.06 30)" : "transparent",
-                      color: low ? "oklch(0.45 0.15 30)" : "inherit",
-                      fontWeight: low ? 700 : 500,
-                    }}
-                  />
+                <td className="num">
+                  <FitCell mono sizerText={row.stock || "—"} style={{ fontWeight: low ? 700 : 500 }}>
+                    <input
+                      className="cell-input num"
+                      inputMode="numeric"
+                      value={row.stock}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "stock", e.target.value)}
+                      style={{
+                        background: low ? "oklch(0.93 0.06 30)" : "transparent",
+                        color: low ? "oklch(0.45 0.15 30)" : "inherit",
+                      }}
+                    />
+                  </FitCell>
+                </td>
+                <td className="num">
+                  <FitCell mono sizerText={row.reorder || "—"}>
+                    <input
+                      className="cell-input num"
+                      inputMode="numeric"
+                      value={row.reorder}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "reorder", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input mono num"
-                    inputMode="numeric"
-                    value={row.reorder}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "reorder", e.target.value)}
-                  />
+                  <FitCell sizerText={row.supplier || "—"}>
+                    <input
+                      className="cell-input"
+                      value={row.supplier}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "supplier", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    value={row.supplier}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "supplier", e.target.value)}
-                  />
+                  <FitCell badge hasArrow sizerText={row.status}>
+                    <select
+                      className="status-select"
+                      value={row.status}
+                      onChange={(e) => onFieldChange(row.id, "status", e.target.value)}
+                      style={{ color: statusColor(row.status) }}
+                    >
+                      {STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </FitCell>
                 </td>
                 <td>
-                  <select
-                    className="status-select"
-                    value={row.status}
-                    onChange={(e) => onFieldChange(row.id, "status", e.target.value)}
-                    style={{ color: statusColor(row.status) }}
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <input
-                    className="cell-input"
-                    style={{ color: "oklch(0.45 0.02 60)" }}
-                    value={row.notes}
-                    placeholder="—"
-                    onChange={(e) => onFieldChange(row.id, "notes", e.target.value)}
-                  />
+                  <FitCell sizerText={row.notes || "—"}>
+                    <input
+                      className="cell-input"
+                      style={{ color: "oklch(0.45 0.02 60)" }}
+                      value={row.notes}
+                      placeholder="—"
+                      onChange={(e) => onFieldChange(row.id, "notes", e.target.value)}
+                    />
+                  </FitCell>
                 </td>
                 <td style={{ textAlign: "center" }}>
                   <button className="delete-btn" title="Delete row" onClick={() => onDelete(row.id)}>

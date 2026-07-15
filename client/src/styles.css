@@ -247,7 +247,7 @@ button {
 
 .inv-table {
   border-collapse: collapse;
-  table-layout: fixed;
+  width: 100%;
   font-size: 13.5px;
 }
 
@@ -279,6 +279,53 @@ button {
 
 .inv-table td {
   padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.inv-table td.num {
+  text-align: right;
+}
+
+/*
+ * Auto-fit cell: the hidden .sizer span holds the cell's actual text, so the
+ * browser's own layout engine sets the cell's intrinsic width — in whatever
+ * font is really loaded, reflowing automatically when web fonts arrive. The
+ * input/select is overlaid on top and just fills the cell.
+ */
+.fit {
+  position: relative;
+  display: block;
+}
+
+.fit.mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.fit.badge {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.fit > .sizer {
+  display: block;
+  visibility: hidden;
+  white-space: pre;
+  min-width: 28px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+}
+
+.fit.has-arrow > .sizer {
+  padding-right: 34px;
+}
+
+.fit > input,
+.fit > select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  font: inherit;
 }
 
 .cell-input {
@@ -287,7 +334,6 @@ button {
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  font-size: 13.5px;
   outline: none;
   color: inherit;
   font-weight: inherit;
@@ -301,10 +347,6 @@ button {
 .cell-input:focus {
   background: oklch(0.97 0.01 60);
   border-color: oklch(0.85 0.03 60);
-}
-
-.cell-input.mono {
-  font-family: "IBM Plex Mono", monospace;
 }
 
 .cell-input.num {
